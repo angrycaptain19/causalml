@@ -125,6 +125,4 @@ def get_uplift_best(cate, conditions):
     '''
     cate_with_control = np.c_[np.zeros(cate.shape[0]), cate]
     uplift_best_idx = np.argmax(cate_with_control, axis=1)
-    uplift_best_name = [conditions[idx] for idx in uplift_best_idx]
-
-    return uplift_best_name
+    return [conditions[idx] for idx in uplift_best_idx]

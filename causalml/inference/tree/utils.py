@@ -30,9 +30,7 @@ def cat_group(dfx, kpix, n_group=10):
         # get the top categories
         top = dfx[kpix].isin(dfx[kpix].value_counts().index[:n_group])
         dfx.loc[~top, kpix] = "Other"
-        return dfx[kpix].values
-    else:
-        return dfx[kpix].values
+    return dfx[kpix].values
 
 
 def cat_transform(dfx, kpix, kpi1):
@@ -97,8 +95,7 @@ def cv_fold_index(n, i, k, random_seed=2018):
     '''
     np.random.seed(random_seed)
     rlist = np.random.choice(a=range(k), size=n, replace=True)
-    fold_i_index = np.where(rlist == i)[0]
-    return fold_i_index
+    return np.where(rlist == i)[0]
 
 
 # Categorize continuous variable
@@ -142,7 +139,7 @@ def cat_continuous(x, granularity='Medium'):
                         np.percentile(x, 95),
                         np.percentile(x, 99)
                         ]
-        res = ['> p90 (%s)' % (lspercentile[8]) if z > lspercentile[8] else
+        return ['> p90 (%s)' % (lspercentile[8]) if z > lspercentile[8] else
                '<= p10 (%s)' % (lspercentile[0]) if z <= lspercentile[0] else
                '<= p20 (%s)' % (lspercentile[1]) if z <= lspercentile[1] else
                '<= p30 (%s)' % (lspercentile[2]) if z <= lspercentile[2] else
@@ -164,7 +161,7 @@ def cat_continuous(x, granularity='Medium'):
                         np.percentile(x, 80),
                         np.percentile(x, 90)
                         ]
-        res = ['<= p10 (%s)' % (lspercentile[0]) if z <= lspercentile[0] else
+        return ['<= p10 (%s)' % (lspercentile[0]) if z <= lspercentile[0] else
                '<= p20 (%s)' % (lspercentile[1]) if z <= lspercentile[1] else
                '<= p30 (%s)' % (lspercentile[2]) if z <= lspercentile[2] else
                '<= p40 (%s)' % (lspercentile[3]) if z <= lspercentile[3] else
@@ -176,11 +173,10 @@ def cat_continuous(x, granularity='Medium'):
                '> p90 (%s)' % (lspercentile[8]) for z in x]
     else:
         lspercentile = [np.percentile(x, 15), np.percentile(x, 50), np.percentile(x, 85)]
-        res = ['1-Very Low' if z < lspercentile[0] else
+        return ['1-Very Low' if z < lspercentile[0] else
                '2-Low' if z < lspercentile[1] else
                '3-High' if z < lspercentile[2] else
                '4-Very High' for z in x]
-    return res
 
 
 def kpi_transform(dfx, kpi_combo, kpi_combo_new):

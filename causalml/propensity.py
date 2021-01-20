@@ -221,11 +221,7 @@ def compute_propensity_score(X, treatment, p_model=None, X_pred=None, treatment_
 
     p_model.fit(X, treatment)
 
-    if X_pred is None:
-        p = p_model.predict(X)
-    else:
-        p = p_model.predict(X_pred)
-
+    p = p_model.predict(X) if X_pred is None else p_model.predict(X_pred)
     if calibrate_p:
         logger.info('Calibrating propensity scores.')
         p = calibrate(p, treatment_pred)

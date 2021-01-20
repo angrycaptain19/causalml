@@ -56,10 +56,7 @@ class BaseSLearner(object):
             learner (optional): a model to estimate the treatment effect
             control_name (str or int, optional): name of control group
         """
-        if learner is not None:
-            self.model = learner
-        else:
-            self.model = DummyRegressor()
+        self.model = learner if learner is not None else DummyRegressor()
         self.ate_alpha = ate_alpha
         self.control_name = control_name
 
@@ -161,26 +158,25 @@ class BaseSLearner(object):
 
         if not return_ci:
             return te
-        else:
-            t_groups_global = self.t_groups
-            _classes_global = self._classes
-            models_global = deepcopy(self.models)
-            te_bootstraps = np.zeros(shape=(X.shape[0], self.t_groups.shape[0], n_bootstraps))
+        t_groups_global = self.t_groups
+        _classes_global = self._classes
+        models_global = deepcopy(self.models)
+        te_bootstraps = np.zeros(shape=(X.shape[0], self.t_groups.shape[0], n_bootstraps))
 
-            logger.info('Bootstrap Confidence Intervals')
-            for i in tqdm(range(n_bootstraps)):
-                te_b = self.bootstrap(X, treatment, y, size=bootstrap_size)
-                te_bootstraps[:, :, i] = te_b
+        logger.info('Bootstrap Confidence Intervals')
+        for i in tqdm(range(n_bootstraps)):
+            te_b = self.bootstrap(X, treatment, y, size=bootstrap_size)
+            te_bootstraps[:, :, i] = te_b
 
-            te_lower = np.percentile(te_bootstraps, (self.ate_alpha/2)*100, axis=2)
-            te_upper = np.percentile(te_bootstraps, (1 - self.ate_alpha / 2) * 100, axis=2)
+        te_lower = np.percentile(te_bootstraps, (self.ate_alpha/2)*100, axis=2)
+        te_upper = np.percentile(te_bootstraps, (1 - self.ate_alpha / 2) * 100, axis=2)
 
-            # set member variables back to global (currently last bootstrapped outcome)
-            self.t_groups = t_groups_global
-            self._classes = _classes_global
-            self.models = deepcopy(models_global)
+        # set member variables back to global (currently last bootstrapped outcome)
+        self.t_groups = t_groups_global
+        self._classes = _classes_global
+        self.models = deepcopy(models_global)
 
-            return (te, te_lower, te_upper)
+        return (te, te_lower, te_upper)
 
     def estimate_ate(self, X, treatment, y, return_ci=False, bootstrap_ci=False,
                      n_bootstraps=1000, bootstrap_size=10000):
@@ -232,7 +228,7 @@ class BaseSLearner(object):
 
         if not return_ci:
             return ate
-        elif return_ci and not bootstrap_ci:
+        elif not bootstrap_ci:
             return ate, ate_lb, ate_ub
         else:
             t_groups_global = self.t_groups
@@ -264,8 +260,7 @@ class BaseSLearner(object):
         treatment_b = treatment[idxs]
         y_b = y[idxs]
         self.fit(X=X_b, treatment=treatment_b, y=y_b)
-        te_b = self.predict(X=X, treatment=treatment, verbose=False)
-        return te_b
+        return self.predict(X=X, treatment=treatment, verbose=False)
 
     def get_importance(self, X=None, tau=None, model_tau_feature=None, features=None, method='auto', normalize=True,
                        test_size=0.3, random_state=None):
@@ -362,7 +357,7 @@ class BaseSLearner(object):
             features (optional, np.array): list/array of feature names. If None, an enumerated list will be used.
             shap_dict (optional, dict): a dict of shapley value matrices. If None, shap_dict will be computed.
         """
-        override_checks = False if shap_dict is None else True
+        override_checks = shap_dict is not None
         explainer = Explainer(method='shapley', control_name=self.control_name,
                               X=X, tau=tau, model_tau=model_tau_feature,
                               features=features, override_checks=override_checks, classes=self._classes)
@@ -395,7 +390,7 @@ class BaseSLearner(object):
                 strongest interaction (note that to find to true strongest interaction you need to compute
                 the SHAP interaction values).
         """
-        override_checks = False if shap_dict is None else True
+        override_checks = shap_dict is not None
         explainer = Explainer(method='shapley', control_name=self.control_name,
                               X=X, tau=tau, model_tau=model_tau_feature,
                               features=features, override_checks=override_checks,

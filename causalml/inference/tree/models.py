@@ -488,11 +488,10 @@ class UpliftTreeClassifier:
             p_hat_optimal.append(pred_leaf[opt_treat])
             treatment_optimal.append(opt_treat)
             if full_output:
-                if xi == 0:
-                    for key_i in pred_leaf:
+                for key_i in pred_leaf:
+                    if xi == 0:
                         pred_nodes[key_i] = [pred_leaf[key_i]]
-                else:
-                    for key_i in pred_leaf:
+                    else:
                         pred_nodes[key_i].append(pred_leaf[key_i])
                 upliftScores.append(upliftScore)
         if full_output:
@@ -523,7 +522,7 @@ class UpliftTreeClassifier:
                 The covariates, treatments and outcomes of left node and the right node.
         '''
         # for int and float values
-        if isinstance(value, int) or isinstance(value, float):
+        if isinstance(value, (int, float)):
             filt = X[:, column] >= value
         else:  # for strings
             filt = X[:, column] == value
@@ -578,13 +577,11 @@ class UpliftTreeClassifier:
         qk = np.clip(qk, eps, 1 - eps)
 
         if pk == 0:
-            S = -np.log(1 - qk)
+            return -np.log(1 - qk)
         elif pk == 1:
-            S = -np.log(qk)
+            return -np.log(qk)
         else:
-            S = pk * np.log(pk / qk) + (1 - pk) * np.log((1 - pk) / (1 - qk))
-
-        return S
+            return pk * np.log(pk / qk) + (1 - pk) * np.log((1 - pk) / (1 - qk))
 
     def evaluate_KL(self, nodeSummary, control_name):
         '''
@@ -606,11 +603,11 @@ class UpliftTreeClassifier:
         if control_name not in nodeSummary:
             return 0
         pc = nodeSummary[control_name][0]
-        d_res = 0
-        for treatment_group in nodeSummary:
-            if treatment_group != control_name:
-                d_res += self.kl_divergence(nodeSummary[treatment_group][0], pc)
-        return d_res
+        return sum(
+            self.kl_divergence(nodeSummary[treatment_group][0], pc)
+            for treatment_group in nodeSummary
+            if treatment_group != control_name
+        )
 
     @staticmethod
     def evaluate_ED(nodeSummary, control_name):
@@ -633,11 +630,11 @@ class UpliftTreeClassifier:
         if control_name not in nodeSummary:
             return 0
         pc = nodeSummary[control_name][0]
-        d_res = 0
-        for treatment_group in nodeSummary:
-            if treatment_group != control_name:
-                d_res += 2*(nodeSummary[treatment_group][0] - pc)**2
-        return d_res
+        return sum(
+            2 * (nodeSummary[treatment_group][0] - pc) ** 2
+            for treatment_group in nodeSummary
+            if treatment_group != control_name
+        )
 
     @staticmethod
     def evaluate_Chi(nodeSummary, control_name):
@@ -659,12 +656,15 @@ class UpliftTreeClassifier:
         if control_name not in nodeSummary:
             return 0
         pc = nodeSummary[control_name][0]
-        d_res = 0
-        for treatment_group in nodeSummary:
-            if treatment_group != control_name:
-                d_res += ((nodeSummary[treatment_group][0] - pc) ** 2 / max(0.1 ** 6, pc)
-                          + (nodeSummary[treatment_group][0] - pc) ** 2 / max(0.1 ** 6, 1 - pc))
-        return d_res
+        return sum(
+            (
+                (nodeSummary[treatment_group][0] - pc) ** 2 / max(0.1 ** 6, pc)
+                + (nodeSummary[treatment_group][0] - pc) ** 2
+                / max(0.1 ** 6, 1 - pc)
+            )
+            for treatment_group in nodeSummary
+            if treatment_group != control_name
+        )
 
     @staticmethod
     def evaluate_CTS(currentNodeSummary):
@@ -1086,19 +1086,12 @@ class UpliftTreeClassifier:
             '''
             if tree.results is not None:  # leaf
                 return tree.results, tree.upliftScore
+            v = observations[tree.col]
+            branch = None
+            if isinstance(v, (int, float)):
+                branch = tree.trueBranch if v >= tree.value else tree.falseBranch
             else:
-                v = observations[tree.col]
-                branch = None
-                if isinstance(v, int) or isinstance(v, float):
-                    if v >= tree.value:
-                        branch = tree.trueBranch
-                    else:
-                        branch = tree.falseBranch
-                else:
-                    if v == tree.value:
-                        branch = tree.trueBranch
-                    else:
-                        branch = tree.falseBranch
+                branch = tree.trueBranch if v == tree.value else tree.falseBranch
             return classifyWithoutMissingData(observations, branch)
 
         def classifyWithMissingData(observations, tree):
@@ -1117,36 +1110,29 @@ class UpliftTreeClassifier:
             '''
             if tree.results is not None:  # leaf
                 return tree.results
-            else:
-                v = observations[tree.col]
-                if v is None:
-                    tr = classifyWithMissingData(observations, tree.trueBranch)
-                    fr = classifyWithMissingData(observations, tree.falseBranch)
-                    tcount = sum(tr.values())
-                    fcount = sum(fr.values())
-                    tw = float(tcount) / (tcount + fcount)
-                    fw = float(fcount) / (tcount + fcount)
+            v = observations[tree.col]
+            if v is None:
+                tr = classifyWithMissingData(observations, tree.trueBranch)
+                fr = classifyWithMissingData(observations, tree.falseBranch)
+                tcount = sum(tr.values())
+                fcount = sum(fr.values())
+                tw = float(tcount) / (tcount + fcount)
+                fw = float(fcount) / (tcount + fcount)
 
-                    # Problem description: http://blog.ludovf.net/python-collections-defaultdict/
-                    result = defaultdict(int)
-                    for k, v in tr.items():
-                        result[k] += v * tw
-                    for k, v in fr.items():
-                        result[k] += v * fw
-                    return dict(result)
+                # Problem description: http://blog.ludovf.net/python-collections-defaultdict/
+                result = defaultdict(int)
+                for k, v in tr.items():
+                    result[k] += v * tw
+                for k, v in fr.items():
+                    result[k] += v * fw
+                return dict(result)
+            else:
+                branch = None
+                if isinstance(v, (int, float)):
+                    branch = tree.trueBranch if v >= tree.value else tree.falseBranch
                 else:
-                    branch = None
-                    if isinstance(v, int) or isinstance(v, float):
-                        if v >= tree.value:
-                            branch = tree.trueBranch
-                        else:
-                            branch = tree.falseBranch
-                    else:
-                        if v == tree.value:
-                            branch = tree.trueBranch
-                        else:
-                            branch = tree.falseBranch
-                return classifyWithMissingData(observations, branch)
+                    branch = tree.trueBranch if v == tree.value else tree.falseBranch
+            return classifyWithMissingData(observations, branch)
 
         # function body
         if dataMissing:
@@ -1313,7 +1299,7 @@ class UpliftRandomForestClassifier:
 
         '''
         df_res = pd.DataFrame()
-        y_pred_ensemble = dict()
+        y_pred_ensemble = {}
         y_pred_list = np.zeros((X.shape[0], len(self.classes_)))
 
         # Make prediction by each tree
@@ -1321,13 +1307,12 @@ class UpliftRandomForestClassifier:
 
             _, _, _, y_pred_full = self.uplift_forest[tree_i].predict(X=X, full_output=True)
 
-            if tree_i == 0:
-                for treatment_group in y_pred_full:
+            for treatment_group in y_pred_full:
+                if tree_i == 0:
                     y_pred_ensemble[treatment_group] = (
                         np.array(y_pred_full[treatment_group]) / len(self.uplift_forest)
                     )
-            else:
-                for treatment_group in y_pred_full:
+                else:
                     y_pred_ensemble[treatment_group] = (
                         np.array(y_pred_ensemble[treatment_group])
                         + np.array(y_pred_full[treatment_group]) / len(self.uplift_forest)

@@ -93,9 +93,7 @@ class DragonNet(object):
         dl = EpsilonLayer()
         epsilons = dl(t_predictions, name='epsilon')
         concat_pred = Concatenate(1)([y0_predictions, y1_predictions, t_predictions, epsilons])
-        model = Model(inputs=inputs, outputs=concat_pred)
-
-        return model
+        return Model(inputs=inputs, outputs=concat_pred)
 
     def fit(self, X, treatment, y):
         """

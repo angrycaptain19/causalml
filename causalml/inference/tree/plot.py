@@ -35,17 +35,16 @@ def uplift_tree_string(decisionTree, x_names):
     def toString(decisionTree, indent=''):
         if decisionTree.results is not None:  # leaf node
             return str(decisionTree.results)
+        szCol = 'Column %s' % decisionTree.col
+        if szCol in dcHeadings:
+            szCol = dcHeadings[szCol]
+        if isinstance(decisionTree.value, (int, float)):
+            decision = '%s >= %s?' % (szCol, decisionTree.value)
         else:
-            szCol = 'Column %s' % decisionTree.col
-            if szCol in dcHeadings:
-                szCol = dcHeadings[szCol]
-            if isinstance(decisionTree.value, int) or isinstance(decisionTree.value, float):
-                decision = '%s >= %s?' % (szCol, decisionTree.value)
-            else:
-                decision = '%s == %s?' % (szCol, decisionTree.value)
-            trueBranch = indent + 'yes -> ' + toString(decisionTree.trueBranch, indent + '\t\t')
-            falseBranch = indent + 'no  -> ' + toString(decisionTree.falseBranch, indent + '\t\t')
-            return (decision + '\n' + trueBranch + '\n' + falseBranch)
+            decision = '%s == %s?' % (szCol, decisionTree.value)
+        trueBranch = indent + 'yes -> ' + toString(decisionTree.trueBranch, indent + '\t\t')
+        falseBranch = indent + 'no  -> ' + toString(decisionTree.falseBranch, indent + '\t\t')
+        return (decision + '\n' + trueBranch + '\n' + falseBranch)
 
     print(toString(decisionTree))
 
@@ -79,9 +78,7 @@ def uplift_tree_plot(decisionTree, x_names):
 
     def toString(iSplit, decisionTree, bBranch, szParent="null", indent='', indexParent=0, upliftScores=list()):
         if decisionTree.results is not None:  # leaf node
-            lsY = []
-            for szX, n in decisionTree.results.items():
-                lsY.append('%s:%.2f' % (szX, n))
+            lsY = ['%s:%.2f' % (szX, n) for szX, n in decisionTree.results.items()]
             dcY = {"name": "%s" % ', '.join(lsY), "parent": szParent}
             dcSummary = decisionTree.summary
             upliftScores += [dcSummary['matchScore']]
@@ -93,7 +90,7 @@ def uplift_tree_plot(decisionTree, x_names):
             szCol = 'Column %s' % decisionTree.col
             if szCol in dcHeadings:
                 szCol = dcHeadings[szCol]
-            if isinstance(decisionTree.value, int) or isinstance(decisionTree.value, float):
+            if isinstance(decisionTree.value, (int, float)):
                 decision = '%s >= %s' % (szCol, decisionTree.value)
             else:
                 decision = '%s == %s' % (szCol, decisionTree.value)

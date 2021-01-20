@@ -40,9 +40,17 @@ def get_synthetic_preds(synthetic_data_func, n=1000, estimators={}):
     """
     y, X, w, tau, b, e = synthetic_data_func(n=n)
 
-    preds_dict = {}
-    preds_dict[KEY_ACTUAL] = tau
-    preds_dict[KEY_GENERATED_DATA] = {'y': y, 'X': X, 'w': w, 'tau': tau, 'b': b, 'e': e}
+    preds_dict = {
+        KEY_ACTUAL: tau,
+        KEY_GENERATED_DATA: {
+            'y': y,
+            'X': X,
+            'w': w,
+            'tau': tau,
+            'b': b,
+            'e': e,
+        },
+    }
 
     # Predict p_hat because e would not be directly observed in real-life
     p_model = ElasticNetPropensityModel()
@@ -81,7 +89,7 @@ def get_synthetic_summary(synthetic_data_func, n=1000, k=1, estimators={}):
     """
     summaries = []
 
-    for i in range(k):
+    for _ in range(k):
         synthetic_preds = get_synthetic_preds(synthetic_data_func, n=n, estimators=estimators)
         actuals = synthetic_preds[KEY_ACTUAL]
         synthetic_summary = pd.DataFrame({label: [preds.mean(), mse(preds, actuals)] for label, preds
@@ -195,9 +203,6 @@ def distr_plot_single_sim(synthetic_preds, kind='kde', drop_learners=[], bins=50
             elif kind == 'hist':
                 plt.hist(v, bins=np.linspace(global_lower, global_upper, bins), label=k, histtype=histtype,
                          alpha=alpha, linewidth=linewidth, color=colors[i])
-            else:
-                pass
-
     plt.xlim(global_lower, global_upper)
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     plt.title('Distribution from a Single Simulation')
@@ -280,9 +285,9 @@ def get_synthetic_preds_holdout(synthetic_data_func, n=1000, valid_size=0.2,
     for base_learner, label_l in zip([BaseSRegressor, BaseTRegressor, BaseXRegressor, BaseRRegressor],
                                      ['S', 'T', 'X', 'R']):
         for model, label_m in zip([LinearRegression, XGBRegressor], ['LR', 'XGB']):
+            learner = base_learner(model())
             # RLearner will need to fit on the p_hat
             if label_l != 'R':
-                learner = base_learner(model())
                 # fit the model on training data only
                 learner.fit(X=X_train, treatment=w_train, y=y_train)
                 try:
@@ -296,7 +301,6 @@ def get_synthetic_preds_holdout(synthetic_data_func, n=1000, valid_size=0.2,
                     preds_dict_valid['{} Learner ({})'.format(
                         label_l, label_m)] = learner.predict(X=X_val, treatment=w_val, y=y_val).flatten()
             else:
-                learner = base_learner(model())
                 learner.fit(X=X_train, p=p_hat_train, treatment=w_train, y=y_train)
                 preds_dict_train['{} Learner ({})'.format(
                     label_l, label_m)] = learner.predict(X=X_train).flatten()
@@ -326,7 +330,7 @@ def get_synthetic_summary_holdout(synthetic_data_func, n=1000, valid_size=0.2, k
     summaries_train = []
     summaries_validation = []
 
-    for i in range(k):
+    for _ in range(k):
         preds_dict_train, preds_dict_valid = get_synthetic_preds_holdout(synthetic_data_func, n=n,
                                                                          valid_size=valid_size)
         actuals_train = preds_dict_train[KEY_ACTUAL]
