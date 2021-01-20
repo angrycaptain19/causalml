@@ -16,7 +16,7 @@ class FilterSelect:
     def __init__(self):
         return
 
-    def _filter_F_one_feature(self, data, treatment_indicator, feature_name, y_name): 
+    def _filter_F_one_feature(self, data, treatment_indicator, feature_name, y_name):
         """
         Conduct F-test of the interaction between treatment and one feature.
 
@@ -40,15 +40,13 @@ class FilterSelect:
         result = model.fit()
 
         F_test = result.f_test(np.array([0, 0, 0, 1]))
-        F_test_result = pd.DataFrame({
+        return pd.DataFrame({
             'feature': feature_name, # for the interaction, not the main effect
             'method': 'F-statistic',
             'score': F_test.fvalue[0][0], 
             'p_value': F_test.pvalue, 
             'misc': 'df_num: {}, df_denom: {}'.format(F_test.df_num, F_test.df_denom), 
         }, index=[0]).reset_index(drop=True)
-
-        return F_test_result
 
 
     def filter_F(self, data, treatment_indicator, features, y_name):
@@ -79,7 +77,7 @@ class FilterSelect:
         return all_result
 
 
-    def _filter_LR_one_feature(self, data, treatment_indicator, feature_name, y_name, disp=True): 
+    def _filter_LR_one_feature(self, data, treatment_indicator, feature_name, y_name, disp=True):
         """
         Conduct LR (Likelihood Ratio) test of the interaction between treatment and one feature.
 
@@ -95,7 +93,7 @@ class FilterSelect:
         (pd.DataFrame): a data frame containing the feature importance statistics
         """
         Y = data[y_name]
-        
+
         # Restricted model
         X_r = data[[treatment_indicator, feature_name]]
         X_r = sm.add_constant(X_r)
@@ -112,15 +110,13 @@ class FilterSelect:
         LR_df = len(result_f.params) - len(result_r.params)
         LR_pvalue = 1 - stats.chi2.cdf(LR_stat, df=LR_df)
 
-        LR_test_result = pd.DataFrame({
+        return pd.DataFrame({
             'feature': feature_name, # for the interaction, not the main effect
             'method': 'LRT-statistic',
             'score': LR_stat, 
             'p_value': LR_pvalue,
             'misc': 'df: {}'.format(LR_df), 
         }, index=[0]).reset_index(drop=True)
-
-        return LR_test_result
 
 
     def filter_LR(self, data, treatment_indicator, features, y_name, disp=True):
@@ -215,8 +211,7 @@ class FilterSelect:
             qk = 0.1**6
         elif qk > 1 - 0.1**6:
             qk = 1 - 0.1**6
-        S = pk * np.log(pk / qk) + (1-pk) * np.log((1-pk) / (1-qk))
-        return S
+        return pk * np.log(pk / qk) + (1-pk) * np.log((1-pk) / (1-qk))
 
     def _evaluate_KL(self, nodeSummary, control_group='control'):
         """
@@ -235,11 +230,11 @@ class FilterSelect:
         if control_group not in nodeSummary:
             return 0
         pc = nodeSummary[control_group][0]
-        d_res = 0
-        for treatment_group in nodeSummary:
-            if treatment_group != control_group:
-                d_res += self._kl_divergence(nodeSummary[treatment_group][0], pc)
-        return d_res
+        return sum(
+            self._kl_divergence(nodeSummary[treatment_group][0], pc)
+            for treatment_group in nodeSummary
+            if treatment_group != control_group
+        )
 
     def _evaluate_ED(self, nodeSummary, control_group='control'):
         """
@@ -254,11 +249,11 @@ class FilterSelect:
         if control_group not in nodeSummary:
             return 0
         pc = nodeSummary[control_group][0]
-        d_res = 0
-        for treatment_group in nodeSummary:
-            if treatment_group != control_group:
-                d_res += 2 * (nodeSummary[treatment_group][0] - pc)**2
-        return d_res
+        return sum(
+            2 * (nodeSummary[treatment_group][0] - pc) ** 2
+            for treatment_group in nodeSummary
+            if treatment_group != control_group
+        )
 
     def _evaluate_Chi(self, nodeSummary, control_group='control'):
         """
@@ -274,14 +269,15 @@ class FilterSelect:
         if control_group not in nodeSummary:
             return 0
         pc = nodeSummary[control_group][0]
-        d_res = 0
-        for treatment_group in nodeSummary:
-            if treatment_group != control_group:
-                d_res += (
-                    (nodeSummary[treatment_group][0] - pc)**2 / max(0.1**6, pc) 
-                    + (nodeSummary[treatment_group][0] - pc)**2 / max(0.1**6, 1-pc)
-                )
-        return d_res
+        return sum(
+            (
+                (nodeSummary[treatment_group][0] - pc) ** 2 / max(0.1 ** 6, pc)
+                + (nodeSummary[treatment_group][0] - pc) ** 2
+                / max(0.1 ** 6, 1 - pc)
+            )
+            for treatment_group in nodeSummary
+            if treatment_group != control_group
+        )
 
 
     def _filter_D_one_feature(self, data, feature_name, y_name, 
@@ -310,13 +306,13 @@ class FilterSelect:
         """
         # [TODO] Application to categorical features
 
-        if method == 'KL':
-            evaluationFunction = self._evaluate_KL
-        elif method == 'ED':
-            evaluationFunction = self._evaluate_ED
-        elif method == 'Chi':
+        if method == 'Chi':
             evaluationFunction = self._evaluate_Chi
 
+        elif method == 'ED':
+            evaluationFunction = self._evaluate_ED
+        elif method == 'KL':
+            evaluationFunction = self._evaluate_KL
         totalSize = len(data.index)
         x_bin = pd.qcut(data[feature_name].values, n_bins, labels=False, 
                         duplicates='raise')
@@ -328,7 +324,7 @@ class FilterSelect:
             )[1]
             nodeScore = evaluationFunction(nodeSummary, 
                                            control_group=control_group)
-            nodeSize = sum([x[1] for x in list(nodeSummary.values())])
+            nodeSize = sum(x[1] for x in list(nodeSummary.values()))
             d_children += nodeScore * nodeSize / totalSize
 
         parentNodeSummary = self._GetNodeSummary(
@@ -336,18 +332,21 @@ class FilterSelect:
         )[1]
         d_parent = evaluationFunction(parentNodeSummary, 
                                       control_group=control_group)
-            
-        d_res = d_children - d_parent
-        
-        D_result = pd.DataFrame({
-            'feature': feature_name, 
-            'method': method,
-            'score': d_res, 
-            'p_value': None,
-            'misc': 'number_of_bins: {}'.format(min(n_bins, x_bin.max()+1)),# format(n_bins),
-        }, index=[0]).reset_index(drop=True)
 
-        return(D_result)
+        d_res = d_children - d_parent
+
+        return pd.DataFrame(
+            {
+                'feature': feature_name,
+                'method': method,
+                'score': d_res,
+                'p_value': None,
+                'misc': 'number_of_bins: {}'.format(
+                    min(n_bins, x_bin.max() + 1)
+                ),  # format(n_bins),
+            },
+            index=[0],
+        ).reset_index(drop=True)
 
     def filter_D(self, data, features, y_name, 
                  n_bins=10, method='KL', control_group='control',

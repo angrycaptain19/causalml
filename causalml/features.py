@@ -192,11 +192,7 @@ class OneHotEncoder(base.BaseEstimator):
         for i, col in enumerate(X.columns):
             X_col = self._transform_col(X[col], i)
             if X_col is not None:
-                if i == 0:
-                    X_new = X_col
-                else:
-                    X_new = sparse.hstack((X_new, X_col))
-
+                X_new = X_col if i == 0 else sparse.hstack((X_new, X_col))
             logger.debug('{} --> {} features'.format(
                 col, self.label_encoder.label_maxes[i])
             )
@@ -246,6 +242,4 @@ def load_data(data, features, transformations={}):
     ohe = OneHotEncoder(min_obs=df.shape[0] * 0.001)
     X_cat = ohe.fit_transform(df[cat_cols]).todense()
 
-    X = np.hstack([df[num_cols].values, X_cat])
-
-    return X
+    return np.hstack([df[num_cols].values, X_cat])

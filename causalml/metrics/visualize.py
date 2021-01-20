@@ -29,12 +29,22 @@ def plot(df, kind='gain', tmle=False, n=100, figsize=(8, 8), *args, **kwarg):
                'gain': get_cumgain,
                'qini': get_qini}
 
-    assert kind in catalog.keys(), '{} plot is not implemented. Select one of {}'.format(kind, catalog.keys())
+    assert (
+        kind in catalog
+    ), '{} plot is not implemented. Select one of {}'.format(
+        kind, catalog.keys()
+    )
+
 
     if tmle:
         ci_catalog = {'gain': plot_tmlegain,
                       'qini': plot_tmleqini}
-        assert kind in ci_catalog.keys(), '{} plot is not implemented. Select one of {}'.format(kind, ci_catalog.keys())
+        assert (
+            kind in ci_catalog
+        ), '{} plot is not implemented. Select one of {}'.format(
+            kind, ci_catalog.keys()
+        )
+
 
         ci_catalog[kind](df, *args, **kwarg)
     else:
@@ -502,23 +512,17 @@ def plot_tmlegain(df, inference_col, learner=LGBMRegressor(num_leaves=64, learni
                            calibrate_propensity=calibrate_propensity, ci=ci)
     if ci:
         model_names = [x.replace(" LB", "") for x in plot_df.columns]
-        model_names = list(set([x.replace(" UB", "") for x in model_names]))
+        model_names = list({x.replace(" UB", "") for x in model_names})
 
         fig, ax = plt.subplots(figsize=figsize)
         cmap = plt.get_cmap("tab10")
-        cindex = 0
-
-        for col in model_names:
+        for cindex, col in enumerate(model_names):
             lb_col = col + " LB"
             up_col = col + " UB"
 
+            ax.plot(plot_df.index, plot_df[col], color=cmap(cindex))
             if col != 'Random':
-                ax.plot(plot_df.index, plot_df[col], color=cmap(cindex))
                 ax.fill_between(plot_df.index, plot_df[lb_col], plot_df[up_col], color=cmap(cindex), alpha=0.25)
-            else:
-                ax.plot(plot_df.index, plot_df[col], color=cmap(cindex))
-            cindex += 1
-
         ax.legend()
     else:
         plot_df.plot(figsize=figsize)
@@ -550,23 +554,17 @@ def plot_tmleqini(df, inference_col, learner=LGBMRegressor(num_leaves=64, learni
                            calibrate_propensity=calibrate_propensity, ci=ci)
     if ci:
         model_names = [x.replace(" LB", "") for x in plot_df.columns]
-        model_names = list(set([x.replace(" UB", "") for x in model_names]))
+        model_names = list({x.replace(" UB", "") for x in model_names})
 
         fig, ax = plt.subplots(figsize=figsize)
         cmap = plt.get_cmap("tab10")
-        cindex = 0
-
-        for col in model_names:
+        for cindex, col in enumerate(model_names):
             lb_col = col + " LB"
             up_col = col + " UB"
 
+            ax.plot(plot_df.index, plot_df[col], color=cmap(cindex))
             if col != 'Random':
-                ax.plot(plot_df.index, plot_df[col], color=cmap(cindex))
                 ax.fill_between(plot_df.index, plot_df[lb_col], plot_df[up_col], color=cmap(cindex), alpha=0.25)
-            else:
-                ax.plot(plot_df.index, plot_df[col], color=cmap(cindex))
-            cindex += 1
-
         ax.legend()
     else:
         plot_df.plot(figsize=figsize)
@@ -645,12 +643,10 @@ def plot_ps_diagnostics(df, covariate_col, treatment_col='w', p_col='p'):
     diffs_post = get_std_diffs(X, W, IPTW, weighted=True)
     num_unbal_post = (np.abs(diffs_post) > 0.1).sum()[0]
 
-    diff_plot = _plot_std_diffs(diffs_pre,
+    return _plot_std_diffs(diffs_pre,
                                 num_unbal_pre,
                                 diffs_post,
                                 num_unbal_post)
-
-    return diff_plot
 
 
 def _plot_std_diffs(diffs_pre, num_unbal_pre, diffs_post, num_unbal_post):
@@ -677,10 +673,8 @@ def _plot_std_diffs(diffs_pre, num_unbal_pre, diffs_post, num_unbal_post):
 
 
 def get_simple_iptw(W, propensity_score):
-    IPTW = (W / propensity_score) + \
+    return (W / propensity_score) + \
         (1 - W) / (1 - propensity_score)
-
-    return IPTW
 
 
 def get_std_diffs(X, W, weight=None, weighted=False, numeric_threshold=5):
@@ -719,7 +713,7 @@ def get_std_diffs(X, W, weight=None, weighted=False, numeric_threshold=5):
         X_0_mean, X_0_var = np.apply_along_axis(
             lambda x: _get_wmean_wvar(x, weight_0), 0, X_0)
 
-    elif not weighted:
+    else:
         X_1_mean, X_1_var = np.apply_along_axis(
             lambda x: _get_mean_var(x), 0, X_1)
         X_0_mean, X_0_var = np.apply_along_axis(
@@ -738,9 +732,7 @@ def get_std_diffs(X, W, weight=None, weighted=False, numeric_threshold=5):
                       np.sqrt(((X_1_mean_prop * (1 - X_1_mean_prop)) + (X_0_mean_prop * (1 - X_0_mean_prop))) / 2))
 
     std_diffs = np.concatenate([std_diffs_cont, std_diffs_prop], axis=0)
-    std_diffs_df = pd.DataFrame(std_diffs, index=cols)
-
-    return std_diffs_df
+    return pd.DataFrame(std_diffs, index=cols)
 
 
 def _get_numeric_vars(X, threshold=5):

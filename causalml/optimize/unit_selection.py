@@ -85,13 +85,11 @@ class CounterfactualUnitSelector:
 
         if self._gain_equality_check():
 
-            est_payoff = self._get_exact_benefit(data, treatment, outcome)
+            return self._get_exact_benefit(data, treatment, outcome)
 
         else:
 
-            est_payoff = self._obj_func_midp(data, treatment, outcome)
-
-        return est_payoff
+            return self._obj_func_midp(data, treatment, outcome)
 
     def _gain_equality_check(self):
         '''
@@ -168,10 +166,8 @@ class CounterfactualUnitSelector:
         segment_prob = self.segment_model.predict_proba(X)
         segment_name = self.segment_model.classes_
 
-        benefit = (beta - theta) * segment_prob[:, segment_name == 'AC'] + \
+        return (beta - theta) * segment_prob[:, segment_name == 'AC'] + \
             (gamma - beta) * segment_prob[:, segment_name == 'AD'] + theta
-
-        return benefit
 
     def _obj_func_midp(self, data, treatment, outcome):
         '''

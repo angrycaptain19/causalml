@@ -19,9 +19,7 @@ def binary_classification_loss(concat_true, concat_pred):
     t_true = concat_true[:, 1]
     t_pred = concat_pred[:, 2]
     t_pred = (t_pred + 0.001) / 1.002
-    losst = tf.reduce_sum(K.binary_crossentropy(t_true, t_pred))
-
-    return losst
+    return tf.reduce_sum(K.binary_crossentropy(t_true, t_pred))
 
 
 def regression_loss(concat_true, concat_pred):

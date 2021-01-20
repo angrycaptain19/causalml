@@ -86,6 +86,4 @@ class PolicyLearner(object):
             (numpy.ndarray): predictions of treatment assignment.
         """
 
-        pi_hat = self.model_pi.predict_proba(X)[:, 1]
-
-        return pi_hat
+        return self.model_pi.predict_proba(X)[:, 1]

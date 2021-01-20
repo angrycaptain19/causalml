@@ -20,8 +20,7 @@ def one_sided(alpha, p, treatment):
         treatment (np.array): a treatment vector (1 if treated, otherwise 0)
     """
     assert p.shape[0] == treatment.shape[0]
-    adj = alpha * (1 - p) * treatment - alpha * p * (1 - treatment)
-    return adj
+    return alpha * (1 - p) * treatment - alpha * p * (1 - treatment)
 
 
 def alignment(alpha, p, treatment):
@@ -37,8 +36,7 @@ def alignment(alpha, p, treatment):
     """
 
     assert p.shape[0] == treatment.shape[0]
-    adj = alpha * (1 - p) * treatment + alpha * p * (1 - treatment)
-    return adj
+    return alpha * (1 - p) * treatment + alpha * p * (1 - treatment)
 
 
 def one_sided_att(alpha, p, treatment):
@@ -54,8 +52,7 @@ def one_sided_att(alpha, p, treatment):
         treatment (np.array): a treatment vector (1 if treated, otherwise 0)
     """
     assert p.shape[0] == treatment.shape[0]
-    adj = alpha * (1 - treatment)
-    return adj
+    return alpha * (1 - treatment)
 
 
 def alignment_att(alpha, p, treatment):
@@ -71,8 +68,7 @@ def alignment_att(alpha, p, treatment):
         treatment (np.array): a treatment vector (1 if treated, otherwise 0)
     """
     assert p.shape[0] == treatment.shape[0]
-    adj = alpha * (1 - treatment)
-    return adj
+    return alpha * (1 - treatment)
 
 
 class Sensitivity(object):
@@ -435,7 +431,10 @@ class SensitivitySelectionBias(Sensitivity):
         sensitivity_summary = self.causalsens()[0]
         sensitivity_summary['Method'] = [method_name + ' (alpha@' + str(round(i, 5)) + ', with r-sqaure:'
                                          for i in sensitivity_summary.alpha]
-        sensitivity_summary['Method'] = sensitivity_summary['Method'] + sensitivity_summary['rsqs'].round(5).astype(str)
+        sensitivity_summary['Method'] += (
+            sensitivity_summary['rsqs'].round(5).astype(str)
+        )
+
         sensitivity_summary['ATE'] = sensitivity_summary[sensitivity_summary.alpha == 0]['New ATE']
         return sensitivity_summary[['Method', 'ATE', 'New ATE', 'New ATE LB', 'New ATE UB']]
 
@@ -458,7 +457,7 @@ class SensitivitySelectionBias(Sensitivity):
             plt.ylim(y_min, y_max)
             plt.xlim(x_min, x_max)
             ax.plot(sens_df.alpha, sens_df['New ATE'])
-        elif type == 'raw' and ci:
+        elif type == 'raw':
             fig, ax = plt.subplots()
             y_max = round(sens_df['New ATE UB'].max()*1.1, 4)
             y_min = round(sens_df['New ATE LB'].min()*0.9, 4)
@@ -479,7 +478,7 @@ class SensitivitySelectionBias(Sensitivity):
                 plt.scatter(partial_rsqs_df.partial_rsqs,
                         list(sens_df[sens_df.alpha == 0]['New ATE']) * partial_rsqs_df.shape[0],
                         marker='x', color="red", linewidth=10)
-        elif type == 'r.squared' and not ci:
+        elif type == 'r.squared':
             fig, ax = plt.subplots()
             y_max = round(sens_df['New ATE UB'].max()*1.1, 4)
             y_min = round(sens_df['New ATE LB'].min()*0.9, 4)
@@ -501,10 +500,13 @@ class SensitivitySelectionBias(Sensitivity):
         Return: min and max value of confounding amount
         """
 
-        rsqs_dict = []
-        for i in sens_df.rsqs:
-            if partial_rsqs_value - partial_rsqs_value*range < i < partial_rsqs_value + partial_rsqs_value*range:
-                rsqs_dict.append(i)
+        rsqs_dict = [
+            i
+            for i in sens_df.rsqs
+            if partial_rsqs_value - partial_rsqs_value * range
+            < i
+            < partial_rsqs_value + partial_rsqs_value * range
+        ]
 
         if rsqs_dict:
             confounding_min = sens_df[sens_df.rsqs.isin(rsqs_dict)].alpha.min()

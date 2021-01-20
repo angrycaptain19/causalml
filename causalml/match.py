@@ -273,11 +273,10 @@ class MatchOptimizer(object):
 
     def single_match(self, score_cols, pihat_threshold, caliper):
         matcher = NearestNeighborMatch(caliper=caliper, replace=True)
-        df_matched = matcher.match(
+        return matcher.match(
             data=self.df[self.df[self.ps_col] < pihat_threshold],
             treatment_col=self.treatment_col, score_cols=score_cols
         )
-        return df_matched
 
     def check_table_one(self, tableone, matched, score_cols, pihat_threshold,
                         caliper):
@@ -305,8 +304,11 @@ class MatchOptimizer(object):
             logger.info('\tScore: {:.03f} (Best Score: {:.03f})\n'.format(score, self.best_score))
 
         # check if passes all criteria
-        self.pass_all = ((num_users_per_group > self.min_users_per_group) and (num_cols_over_smd == 0) and
-                         all([dev < self.max_deviation for dev in deviations]))
+        self.pass_all = (
+            num_users_per_group > self.min_users_per_group
+            and num_cols_over_smd == 0
+            and all(dev < self.max_deviation for dev in deviations)
+        )
 
     def match_and_check(self, score_cols, pihat_threshold, caliper):
         if self.verbose:

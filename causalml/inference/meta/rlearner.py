@@ -89,8 +89,8 @@ class BaseRLearner(object):
 
         if p is None:
             logger.info('Generating propensity score')
-            p = dict()
-            p_model = dict()
+            p = {}
+            p_model = {}
             for group in self.t_groups:
                 mask = (treatment == group) | (treatment == self.control_name)
                 treatment_filt = treatment[mask]
@@ -190,28 +190,27 @@ class BaseRLearner(object):
 
         if not return_ci:
             return te
-        else:
-            t_groups_global = self.t_groups
-            _classes_global = self._classes
-            model_mu_global = deepcopy(self.model_mu)
-            models_tau_global = deepcopy(self.models_tau)
-            te_bootstraps = np.zeros(shape=(X.shape[0], self.t_groups.shape[0], n_bootstraps))
+        t_groups_global = self.t_groups
+        _classes_global = self._classes
+        model_mu_global = deepcopy(self.model_mu)
+        models_tau_global = deepcopy(self.models_tau)
+        te_bootstraps = np.zeros(shape=(X.shape[0], self.t_groups.shape[0], n_bootstraps))
 
-            logger.info('Bootstrap Confidence Intervals')
-            for i in tqdm(range(n_bootstraps)):
-                te_b = self.bootstrap(X, treatment, y, p, size=bootstrap_size)
-                te_bootstraps[:, :, i] = te_b
+        logger.info('Bootstrap Confidence Intervals')
+        for i in tqdm(range(n_bootstraps)):
+            te_b = self.bootstrap(X, treatment, y, p, size=bootstrap_size)
+            te_bootstraps[:, :, i] = te_b
 
-            te_lower = np.percentile(te_bootstraps, (self.ate_alpha / 2) * 100, axis=2)
-            te_upper = np.percentile(te_bootstraps, (1 - self.ate_alpha / 2) * 100, axis=2)
+        te_lower = np.percentile(te_bootstraps, (self.ate_alpha / 2) * 100, axis=2)
+        te_upper = np.percentile(te_bootstraps, (1 - self.ate_alpha / 2) * 100, axis=2)
 
-            # set member variables back to global (currently last bootstrapped outcome)
-            self.t_groups = t_groups_global
-            self._classes = _classes_global
-            self.model_mu = deepcopy(model_mu_global)
-            self.models_tau = deepcopy(models_tau_global)
+        # set member variables back to global (currently last bootstrapped outcome)
+        self.t_groups = t_groups_global
+        self._classes = _classes_global
+        self.model_mu = deepcopy(model_mu_global)
+        self.models_tau = deepcopy(models_tau_global)
 
-            return (te, te_lower, te_upper)
+        return (te, te_lower, te_upper)
 
     def estimate_ate(self, X, treatment, y, p=None, bootstrap_ci=False, n_bootstraps=1000, bootstrap_size=10000):
         """Estimate the Average Treatment Effect (ATE).
@@ -266,28 +265,27 @@ class BaseRLearner(object):
 
         if not bootstrap_ci:
             return ate, ate_lb, ate_ub
-        else:
-            t_groups_global = self.t_groups
-            _classes_global = self._classes
-            model_mu_global = deepcopy(self.model_mu)
-            models_tau_global = deepcopy(self.models_tau)
+        t_groups_global = self.t_groups
+        _classes_global = self._classes
+        model_mu_global = deepcopy(self.model_mu)
+        models_tau_global = deepcopy(self.models_tau)
 
-            logger.info('Bootstrap Confidence Intervals for ATE')
-            ate_bootstraps = np.zeros(shape=(self.t_groups.shape[0], n_bootstraps))
+        logger.info('Bootstrap Confidence Intervals for ATE')
+        ate_bootstraps = np.zeros(shape=(self.t_groups.shape[0], n_bootstraps))
 
-            for n in tqdm(range(n_bootstraps)):
-                cate_b = self.bootstrap(X, treatment, y, p, size=bootstrap_size)
-                ate_bootstraps[:, n] = cate_b.mean()
+        for n in tqdm(range(n_bootstraps)):
+            cate_b = self.bootstrap(X, treatment, y, p, size=bootstrap_size)
+            ate_bootstraps[:, n] = cate_b.mean()
 
-            ate_lower = np.percentile(ate_bootstraps, (self.ate_alpha / 2) * 100, axis=1)
-            ate_upper = np.percentile(ate_bootstraps, (1 - self.ate_alpha / 2) * 100, axis=1)
+        ate_lower = np.percentile(ate_bootstraps, (self.ate_alpha / 2) * 100, axis=1)
+        ate_upper = np.percentile(ate_bootstraps, (1 - self.ate_alpha / 2) * 100, axis=1)
 
-            # set member variables back to global (currently last bootstrapped outcome)
-            self.t_groups = t_groups_global
-            self._classes = _classes_global
-            self.model_mu = deepcopy(model_mu_global)
-            self.models_tau = deepcopy(models_tau_global)
-            return ate, ate_lower, ate_upper
+        # set member variables back to global (currently last bootstrapped outcome)
+        self.t_groups = t_groups_global
+        self._classes = _classes_global
+        self.model_mu = deepcopy(model_mu_global)
+        self.models_tau = deepcopy(models_tau_global)
+        return ate, ate_lower, ate_upper
 
     def bootstrap(self, X, treatment, y, p, size=10000):
         """Runs a single bootstrap. Fits on bootstrapped sample, then predicts on whole population."""
@@ -298,8 +296,7 @@ class BaseRLearner(object):
         treatment_b = treatment[idxs]
         y_b = y[idxs]
         self.fit(X=X_b, treatment=treatment_b, y=y_b, p=p_b, verbose=False)
-        te_b = self.predict(X=X)
-        return te_b
+        return self.predict(X=X)
 
     def get_importance(self, X=None, tau=None, model_tau_feature=None, features=None, method='auto', normalize=True,
                        test_size=0.3, random_state=None):
@@ -396,7 +393,7 @@ class BaseRLearner(object):
             features (optional, np.array): list/array of feature names. If None, an enumerated list will be used.
             shap_dict (optional, dict): a dict of shapley value matrices. If None, shap_dict will be computed.
         """
-        override_checks = False if shap_dict is None else True
+        override_checks = shap_dict is not None
         explainer = Explainer(method='shapley', control_name=self.control_name,
                               X=X, tau=tau, model_tau=model_tau_feature,
                               features=features, override_checks=override_checks, classes=self._classes)
@@ -429,7 +426,7 @@ class BaseRLearner(object):
                 strongest interaction (note that to find to true strongest interaction you need to compute
                 the SHAP interaction values).
         """
-        override_checks = False if shap_dict is None else True
+        override_checks = shap_dict is not None
         explainer = Explainer(method='shapley', control_name=self.control_name,
                               X=X, tau=tau, model_tau=model_tau_feature,
                               features=features, override_checks=override_checks,
@@ -530,8 +527,8 @@ class BaseRClassifier(BaseRLearner):
 
         if p is None:
             logger.info('Generating propensity score')
-            p = dict()
-            p_model = dict()
+            p = {}
+            p_model = {}
             for group in self.t_groups:
                 mask = (treatment == group) | (treatment == self.control_name)
                 treatment_filt = treatment[mask]
@@ -655,8 +652,8 @@ class XGBRRegressor(BaseRRegressor):
 
         if p is None:
             logger.info('Generating propensity score')
-            p = dict()
-            p_model = dict()
+            p = {}
+            p_model = {}
             for group in self.t_groups:
                 mask = (treatment == group) | (treatment == self.control_name)
                 treatment_filt = treatment[mask]

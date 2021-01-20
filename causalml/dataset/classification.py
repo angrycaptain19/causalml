@@ -114,7 +114,7 @@ def make_uplift_classification(n_samples=1000,
         x_name.append(x_name_i)
         df_res[x_name_i] = X1[:, n_classification_informative+n_classification_redundant+xi]
 
-    for xi in range(n_classification_features - n_classification_informative - n_classification_redundant
+    for _ in range(n_classification_features - n_classification_informative - n_classification_redundant
                     - n_classification_repeated):
         x_name_i = 'x' + str(len(x_name)+1) + '_irrelevant'
         x_name.append(x_name_i)
@@ -144,7 +144,7 @@ def make_uplift_classification(n_samples=1000,
                 df_res[x_name_i] = X_increase[:, xi]
             Y[treatment_index] = Y[treatment_index] + Y_increase[treatment_index]
             if n_uplift_increase_mix_informative_dict[treatment_key_i] > 0:
-                for xi in range(n_uplift_increase_mix_informative_dict[treatment_key_i]):
+                for _ in range(n_uplift_increase_mix_informative_dict[treatment_key_i]):
                     x_name_i = 'x' + str(len(x_name)+1) + '_increase_mix'
                     x_name.append(x_name_i)
                     df_res[x_name_i] = (np.random.uniform(-1, 1) * df_res[np.random.choice(x_informative_name)]
@@ -169,7 +169,7 @@ def make_uplift_classification(n_samples=1000,
                 df_res[x_name_i] = X_decrease[:, xi]
             Y[treatment_index] = Y[treatment_index] - Y_decrease[treatment_index]
             if n_uplift_decrease_mix_informative_dict[treatment_key_i] > 0:
-                for xi in range(n_uplift_decrease_mix_informative_dict[treatment_key_i]):
+                for _ in range(n_uplift_decrease_mix_informative_dict[treatment_key_i]):
                     x_name_i = 'x' + str(len(x_name)+1) + '_decrease_mix'
                     x_name.append(x_name_i)
                     df_res[x_name_i] = (np.random.uniform(-1, 1) * df_res[np.random.choice(x_informative_name)]
